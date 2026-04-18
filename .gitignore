@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.env
+
+# Local environment files
+.env.local
+.env.*
+!.env.example

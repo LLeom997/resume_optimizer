@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Resume × JD Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f2f7;--surface:#ffffff;--surface2:#f5f7fb;--border:#dde2ef;
+    --accent:#3b7ef5;--accent2:#6c3ff7;--green:#15a06e;--red:#d94f4f;--yellow:#c78b00;
+    --text:#1a2035;--muted:#7080a0;--shadow:0 2px 12px rgba(0,0,0,.08);
+    --grid-color:rgba(0,0,0,.055);
+    --gs:'Google Sans',sans-serif;--mono:'DM Mono',monospace;
+  }
+  [data-theme="dark"] {
+    --bg:#090d18;--surface:#0f1523;--surface2:#141a2e;--border:#1c2540;
+    --accent:#4f8ef7;--accent2:#7c5cfc;--green:#2dd4a0;--red:#f76f6f;--yellow:#f7c84f;
+    --text:#e2e8f8;--muted:#5a6a8a;--shadow:0 2px 12px rgba(0,0,0,.45);
+    --grid-color:rgba(255,255,255,.038);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--gs);min-height:100vh;font-size:14px;transition:background .2s,color .2s;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid-color) 1px,transparent 1px),linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+  .wrap{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:0 24px 60px;}
+  .theme-btn{font-family:var(--mono);font-size:11px;padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .2s;}
+  .theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(6px);transition:all .3s;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.ok{background:var(--surface);border:1px solid var(--green);color:var(--green);box-shadow:var(--shadow);}
+  .toast.fail{background:var(--surface);border:1px solid var(--red);color:var(--red);box-shadow:var(--shadow);}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 16px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+  .logo{font-family:var(--gs);font-weight:700;font-size:20px;letter-spacing:-.3px;}.logo em{color:var(--accent);font-style:normal;}
+  .hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .badge{font-family:var(--mono);font-size:11px;background:rgba(59,126,245,.1);border:1px solid rgba(59,126,245,.25);color:var(--accent);padding:4px 10px;border-radius:4px;}
+  .hdr-link{font-family:var(--mono);font-size:11px;padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);text-decoration:none;transition:all .2s;}
+  .hdr-link:hover{border-color:var(--accent);color:var(--accent);}
+  .hdr-link.green{border-color:rgba(21,160,110,.3);color:var(--green);}
+  [data-theme="dark"] .hdr-link.green{border-color:rgba(45,212,160,.3);}
+
+  /* FORM */
+  .field-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 15px;margin-bottom:6px;box-shadow:var(--shadow);}
+  .field-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;min-width:140px;}
+  .field-row input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:13px;}
+  .field-row input::placeholder{color:var(--muted);}
+  .api-tip{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:20px;padding-left:2px;}
+  .api-tip a{color:var(--accent);text-decoration:none;}
+
+  /* EXTRACTED PANEL */
+  .extracted-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px;display:none;box-shadow:var(--shadow);}
+  .extracted-panel.on{display:block;animation:up .3s ease;}
+  .ext-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .ext-title{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+  .ext-note{font-size:11px;color:var(--muted);font-style:italic;}
+  .ext-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .ext-field{display:flex;flex-direction:column;gap:5px;}
+  .ext-field label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .ext-input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 11px;outline:none;transition:border-color .2s;width:100%;}
+  .ext-input:focus{border-color:var(--accent);}
+  .ext-kw-block{margin-top:10px;}
+  .ext-kw-lbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:5px;}
+  .tag-g{background:rgba(21,160,110,.1);border:1px solid rgba(21,160,110,.2);color:var(--green);}
+  .tag-r{background:rgba(217,79,79,.1);border:1px solid rgba(217,79,79,.2);color:var(--red);}
+  .tag-y{background:rgba(199,139,0,.1);border:1px solid rgba(199,139,0,.2);color:var(--yellow);}
+  [data-theme="dark"] .tag-g{background:rgba(45,212,160,.1);border-color:rgba(45,212,160,.22);}
+  [data-theme="dark"] .tag-r{background:rgba(247,111,111,.1);border-color:rgba(247,111,111,.22);}
+  [data-theme="dark"] .tag-y{background:rgba(247,200,79,.1);border-color:rgba(247,200,79,.22);}
+
+  /* TEXT PANELS */
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow);}
+  .panel-lbl{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;align-items:center;gap:7px;margin-bottom:12px;}
+  .pip{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .pip-b{background:var(--accent);}.pip-p{background:var(--accent2);}
+  .dropzone{border:2px dashed var(--border);border-radius:9px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;margin-bottom:10px;}
+  .dropzone:hover,.dropzone.over{border-color:var(--accent);background:rgba(59,126,245,.04);}
+  .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .drop-icon{font-size:20px;margin-bottom:4px;}.drop-hint{font-size:12px;color:var(--muted);}.drop-hint b{color:var(--text);}
+  .file-chip{display:none;align-items:center;gap:8px;background:rgba(21,160,110,.08);border:1px solid rgba(21,160,110,.2);border-radius:6px;padding:5px 11px;font-family:var(--mono);font-size:12px;color:var(--green);margin-bottom:8px;}
+  .file-chip.on{display:flex;}.rm{margin-left:auto;cursor:pointer;background:none;border:none;color:var(--green);font-size:14px;}
+  textarea{width:100%;min-height:180px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--gs);font-size:13px;line-height:1.65;padding:12px 14px;resize:vertical;outline:none;transition:border-color .2s;}
+  textarea:focus{border-color:var(--accent);}textarea::placeholder{color:var(--muted);}
+
+  /* BUTTONS */
+  .go-btn{width:100%;padding:14px;margin-bottom:24px;background:linear-gradient(130deg,var(--accent),var(--accent2));border:none;border-radius:10px;color:#fff;font-family:var(--gs);font-weight:600;font-size:15px;cursor:pointer;transition:all .2s;}
+  .go-btn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(59,126,245,.28);}
+  .go-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+  .spin{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;margin:0 auto;}
+  .go-btn.loading .btn-txt{display:none;}.go-btn.loading .spin{display:block;}
+  @keyframes rot{to{transform:rotate(360deg);}}
+  .icon-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--gs);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;text-decoration:none;}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .icon-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .icon-btn.green{border-color:rgba(21,160,110,.3);color:var(--green);}
+  .icon-btn.green:hover{background:rgba(21,160,110,.08);}
+  .icon-btn.purple{border-color:rgba(108,63,247,.3);color:var(--accent2);}
+  .icon-btn.purple:hover{background:rgba(108,63,247,.08);}
+  [data-theme="dark"] .icon-btn.green{border-color:rgba(45,212,160,.3);}
+  [data-theme="dark"] .icon-btn.purple{border-color:rgba(124,92,252,.3);color:#a78bfa;}
+  .err{display:none;background:rgba(217,79,79,.08);border:1px solid rgba(217,79,79,.25);border-radius:8px;padding:12px 14px;color:var(--red);font-size:13px;margin-bottom:16px;line-height:1.6;}
+  .err.on{display:block;}
+
+  /* REPORT */
+  #report{display:none;}#report.on{display:block;animation:up .4s ease;}
+  @keyframes up{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  .save-panel{background:var(--surface);border:1px solid rgba(21,160,110,.3);border-radius:12px;padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);}
+  [data-theme="dark"] .save-panel{border-color:rgba(45,212,160,.25);}
+  .save-panel-info{flex:1;}.save-panel-info strong{font-size:14px;display:block;margin-bottom:3px;}.save-panel-info span{font-size:12px;color:var(--muted);}
+  .score-card{display:grid;grid-template-columns:130px 1fr;gap:28px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:18px;box-shadow:var(--shadow);}
+  .ring-wrap{position:relative;width:120px;height:120px;}
+  .ring-svg{transform:rotate(-90deg);}
+  .ring-bg{fill:none;stroke:var(--border);stroke-width:9;}
+  .ring-fill{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);}
+  .ring-lbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .ring-num{font-weight:700;font-size:30px;line-height:1;}.ring-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.05em;margin-top:2px;}
+  .score-right h2{font-weight:700;font-size:20px;margin-bottom:7px;}
+  .score-verdict{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;}
+  .bars{display:flex;flex-direction:column;gap:8px;}
+  .bar-row{display:flex;align-items:center;gap:10px;}
+  .bar-lbl{font-family:var(--mono);font-size:11px;color:var(--muted);width:140px;flex-shrink:0;}
+  .bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:3px;transition:width 1.1s cubic-bezier(.4,0,.2,1);}
+  .bar-val{font-family:var(--mono);font-size:11px;width:32px;text-align:right;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow);}
+  .card-full{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;}
+  .card-ttl{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+  .recs{display:flex;flex-direction:column;gap:8px;}
+  .rec{display:flex;gap:10px;align-items:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.55;}
+  .strs{display:flex;flex-direction:column;gap:8px;}
+  .str{display:flex;gap:9px;font-size:13px;line-height:1.55;}.str-dot{color:var(--green);flex-shrink:0;}
+  .gen-text{font-size:14px;line-height:1.8;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;white-space:pre-wrap;min-height:80px;}
+  @keyframes pulse{0%,100%{opacity:.4;}50%{opacity:1;}}
+  .pulsing{animation:pulse 1.2s ease-in-out infinite;}
+  .exp-section{margin-bottom:16px;}
+  .exp-title{font-weight:600;font-size:13px;color:var(--accent);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .exp-bullets{display:flex;flex-direction:column;gap:7px;}
+  .bullet-row{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.6;padding:6px 10px;border-radius:6px;}
+  .bullet-row.changed{background:rgba(199,139,0,.07);border:1px solid rgba(199,139,0,.2);}
+  .bullet-row.added{background:rgba(21,160,110,.07);border:1px solid rgba(21,160,110,.2);}
+  [data-theme="dark"] .bullet-row.changed{background:rgba(247,200,79,.05);border-color:rgba(247,200,79,.15);}
+  [data-theme="dark"] .bullet-row.added{background:rgba(45,212,160,.05);border-color:rgba(45,212,160,.15);}
+  .b-icon{flex-shrink:0;margin-top:3px;font-size:12px;}.b-change-note{font-size:11px;color:var(--muted);margin-top:3px;font-style:italic;}
+  .changelog-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .cl-hdr{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px;}
+  .cl-empty{font-size:13px;color:var(--muted);font-style:italic;}
+  .cl-item{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);margin-bottom:8px;font-size:13px;line-height:1.55;}
+  .cl-type{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:4px;flex-shrink:0;letter-spacing:.04em;font-weight:500;margin-top:1px;}
+  .cl-added{background:rgba(21,160,110,.12);color:var(--green);border:1px solid rgba(21,160,110,.25);}
+  .cl-modified{background:rgba(199,139,0,.12);color:var(--yellow);border:1px solid rgba(199,139,0,.25);}
+  .cl-kept{background:rgba(59,126,245,.12);color:var(--accent);border:1px solid rgba(59,126,245,.25);}
+  [data-theme="dark"] .cl-added{background:rgba(45,212,160,.12);border-color:rgba(45,212,160,.25);}
+  [data-theme="dark"] .cl-modified{background:rgba(247,200,79,.12);border-color:rgba(247,200,79,.25);}
+  /* OPTIMIZED RESUME */
+  .opt-idle{color:var(--muted);font-size:13px;font-style:italic;}
+  .perm-box{background:var(--surface2);border:1px solid rgba(199,139,0,.35);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+  [data-theme="dark"] .perm-box{border-color:rgba(247,200,79,.3);}
+  .perm-title{font-weight:600;font-size:14px;margin-bottom:7px;color:var(--yellow);}
+  .perm-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;}
+  .perm-changes{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .perm-change{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.5;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 12px;}
+  .perm-btns{display:flex;gap:10px;}
+  .perm-approve{padding:9px 18px;border-radius:8px;border:none;background:linear-gradient(130deg,var(--green),#0d8a5e);color:#fff;font-family:var(--gs);font-weight:600;font-size:13px;cursor:pointer;transition:all .2s;}
+  .perm-approve:hover{transform:translateY(-1px);box-shadow:0 5px 18px rgba(21,160,110,.3);}
+  .perm-reject{padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:var(--gs);font-size:13px;cursor:pointer;}
+  .perm-reject:hover{border-color:var(--red);color:var(--red);}
+  .opt-resume-md{font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;white-space:pre-wrap;max-height:520px;overflow-y:auto;}
+  .opt-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center;}
+  .opt-status{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:5px;display:none;}
+  .opt-status.ok{display:inline-flex;background:rgba(21,160,110,.1);border:1px solid rgba(21,160,110,.2);color:var(--green);}
+  .opt-status.fail{display:inline-flex;background:rgba(217,79,79,.1);border:1px solid rgba(217,79,79,.2);color:var(--red);}
+  @media(max-width:720px){.panels,.grid2,.ext-grid{grid-template-columns:1fr;}.score-card{grid-template-columns:1fr;}.hdr-right{flex-wrap:wrap;}}
+</style>
+<script>  (function(){
+    var t=localStorage.getItem('rxjd-theme')||'light';
+    document.documentElement.setAttribute('data-theme',t);
+    function upBtn(){var b=document.getElementById('themeBtn');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️ Light':'🌙 Dark';}
+    window.toggleTheme=function(){var c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('rxjd-theme',n);upBtn();};
+    document.addEventListener('DOMContentLoaded',upBtn);
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Resume<em>&times;</em>JD Analyzer</div>
+    <div class="hdr-right">
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
+      <a class="hdr-link green" href="/history.html">📊 History</a>
+      <a class="hdr-link" href="https://openrouter.ai/logs" target="_blank">📋 OR Logs</a>
+      <div class="badge">GPT-4O-MINI</div>
+    </div>
+  </header>
+
+  <div class="field-row">
+    <span class="field-lbl">OPENROUTER API KEY</span>
+    <input type="password" id="apiKey" placeholder="sk-or-v1-... (auto-loads from Supabase)" />
+    <button class="icon-btn" id="saveApiBtn" onclick="saveApiKey()" style="flex-shrink:0">💾 Save</button>
+    <span id="apiStatus" style="font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap"></span>
+  </div>
+  <p class="api-tip">Key stored in Supabase · <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a></p>
+
+  <div class="field-row" style="margin-bottom:24px">
+    <span class="field-lbl">JOB URL (optional)</span>
+    <input type="url" id="jobUrl" placeholder="https://linkedin.com/jobs/..." />
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-lbl"><span class="pip pip-b"></span>Resume</div>
+      <div class="file-chip" id="resumeChip"><span id="resumeChipName"></span><button class="rm" onclick="clearF('resume')">✕</button></div>
+      <div class="dropzone"><input type="file" accept=".txt,.md" onchange="loadFile(this,'resume')"><div class="drop-icon">📄</div><div class="drop-hint">Drop or <b>browse</b><br><span style="font-size:11px;color:var(--muted)">TXT · MD</span></div></div>
+      <textarea id="resumeText" placeholder="…or paste resume text here"></textarea>
+    </div>
+    <div class="panel">
+      <div class="panel-lbl"><span class="pip pip-p"></span>Job Description</div>
+      <div class="file-chip" id="jdChip"><span id="jdChipName"></span><button class="rm" onclick="clearF('jd')">✕</button></div>
+      <div class="dropzone"><input type="file" accept=".txt,.md" onchange="loadFile(this,'jd')"><div class="drop-icon">📋</div><div class="drop-hint">Drop or <b>browse</b><br><span style="font-size:11px;color:var(--muted)">TXT · MD</span></div></div>
+      <textarea id="jdText" placeholder="…or paste job description here"></textarea>
+    </div>
+  </div>
+
+  <div class="err" id="errBox"></div>
+  <button class="go-btn" id="goBtn" onclick="analyze()">
+    <span class="btn-txt">⚡ Analyze Match</span><div class="spin"></div>
+  </button>
+
+  <div id="report">
+
+    <!-- EXTRACTED INFO (editable) -->
+    <div class="extracted-panel" id="extractedPanel">
+      <div class="ext-hdr">
+        <div class="ext-title">🔍 Extracted Info — Review &amp; Edit Before Saving</div>
+        <div class="ext-note">AI-extracted · manually editable</div>
+      </div>
+      <div class="ext-grid">
+        <div class="ext-field"><label>Company Name</label><input class="ext-input" id="extCompany" placeholder="e.g. Google" /></div>
+        <div class="ext-field"><label>Job Role / Title</label><input class="ext-input" id="extRole" placeholder="e.g. Senior Product Manager" /></div>
+      </div>
+      <div class="ext-kw-block"><div class="ext-kw-lbl">✅ Matched Keywords</div><div class="tags" id="extMatched"></div></div>
+      <div class="ext-kw-block"><div class="ext-kw-lbl">❌ Missing Keywords</div><div class="tags" id="extMissing"></div></div>
+      <div class="ext-kw-block"><div class="ext-kw-lbl">~ Partial Matches</div><div class="tags" id="extPartial"></div></div>
+    </div>
+
+    <!-- SAVE PANEL -->
+    <div class="save-panel">
+      <div class="save-panel-info">
+        <strong>Save this result to History?</strong>
+        <span>Edit company/role above if AI got it wrong, then save.</span>
+      </div>
+      <button class="icon-btn purple" id="saveKwBtn" onclick="saveKeywords()">💾 Save to Supabase</button>
+    </div>
+
+    <!-- SCORE RING -->
+    <div class="score-card">
+      <div class="ring-wrap">
+        <svg class="ring-svg" width="120" height="120" viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="50"/>
+          <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+        </svg>
+        <div class="ring-lbl"><span class="ring-num" id="scoreNum">—</span><span class="ring-sub">MATCH</span></div>
+      </div>
+      <div class="score-right">
+        <h2 id="scoreTitle"></h2>
+        <p class="score-verdict" id="scoreVerdict"></p>
+        <p id="scoreMeta" style="display:none;font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:12px"></p>
+        <div class="bars" id="scoreBars"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><div class="card-ttl" style="margin-bottom:12px">💪 Strengths</div><div class="strs" id="strengthsList"></div></div>
+      <div class="card"><div class="card-ttl" style="margin-bottom:12px">⚠️ Gaps &amp; Risks</div><div class="recs" id="gapsList"></div></div>
+    </div>
+    <div class="card-full"><div class="card-ttl" style="margin-bottom:12px">🔧 Recommendations</div><div class="recs" id="recsList"></div></div>
+
+    <div class="card-full">
+      <div class="card-hdr"><div class="card-ttl">✍️ AI-Optimised Professional Summary</div><button class="icon-btn green" id="genSummaryBtn" onclick="generateSummary()">⚡ Generate</button></div>
+      <div class="gen-text" id="summaryOutput" style="color:var(--muted);font-style:italic">Click Generate to create a keyword-optimised summary...</div>
+    </div>
+
+    <div class="card-full">
+      <div class="card-hdr"><div class="card-ttl">🏢 AI-Optimised Experience Bullets</div><button class="icon-btn green" id="genExpBtn" onclick="generateExperience()">⚡ Generate</button></div>
+      <div id="expOutput"><span style="color:var(--muted);font-size:13px;font-style:italic">Click Generate to inject missing keywords into your bullets...</span></div>
+    </div>
+
+    <div class="card-full"><div class="card-ttl" style="margin-bottom:12px">📝 Recruiter Perspective</div><p id="recruiterText" style="font-size:14px;line-height:1.75"></p></div>
+
+    <div class="card-full">
+      <div class="card-hdr"><div class="card-ttl">🚀 AI-Optimised Full Resume</div><button class="icon-btn green" id="genOptResumeBtn" onclick="startOptimizeResume()">⚡ Generate</button></div>
+      <div id="optResumeIdle" class="opt-idle">Click Generate — AI will propose changes and ask permission before modifying anything.</div>
+      <div id="optPermBox" style="display:none">
+        <div class="perm-box">
+          <div class="perm-title">⚠️ Permission Required — Proposed Changes</div>
+          <div class="perm-desc">The AI wants to make targeted modifications. No facts or metrics will change — only phrasing and keyword integration. Review and approve:</div>
+          <div class="perm-changes" id="permChangesList"></div>
+          <div class="perm-btns"><button class="perm-approve" onclick="approveOptimize()">✅ Approve &amp; Generate</button><button class="perm-reject" onclick="rejectOptimize()">✕ Cancel</button></div>
+        </div>
+      </div>
+      <div id="optResumeResult" style="display:none">
+        <pre class="opt-resume-md" id="optResumeMd"></pre>
+        <div class="opt-actions">
+          <button class="icon-btn green" onclick="saveOptimizedResume()">💾 Save to Supabase</button>
+          <button class="icon-btn" onclick="copyOptResume()">📋 Copy</button>
+          <button class="icon-btn" onclick="downloadOptResume()">⬇ Download .md</button>
+          <span class="opt-status" id="optSaveStatus"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="changelog-wrap">
+      <div class="cl-hdr">📋 Change Log</div>
+      <div id="changelogList"><div class="cl-empty">No changes yet — generate summary or bullets above.</div></div>
+    </div>
+
+  </div><!-- /report -->
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  var SB_URL='', SB_KEY='', _r=null, _optProposal=null;
+
+  async function loadApiKey(){
+    try{
+      var res=await fetch(SB_URL+'/rest/v1/openrouter_api?select=api_key&order=created_at.desc&limit=1',{headers:{apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+      var rows=await res.json();
+      if(rows&&rows.length&&rows[0].api_key){document.getElementById('apiKey').value=rows[0].api_key;apiSt('✅ loaded','var(--green)');}
+      else apiSt('no key saved','');
+    }catch(e){apiSt('load failed','');}
+  }
+  function apiSt(t,c){var s=document.getElementById('apiStatus');s.textContent=t;if(c)s.style.color=c;}
+
+  async function saveApiKey(){
+    var key=document.getElementById('apiKey').value.trim();
+    if(!key)return showToast('Enter an API key first',false);
+    var btn=document.getElementById('saveApiBtn');btn.disabled=true;btn.textContent='⏳';
+    try{
+      var res=await fetch(SB_URL+'/rest/v1/openrouter_api',{method:'POST',headers:{apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({api_key:key,label:'default'})});
+      if(!res.ok)throw new Error('error');
+      showToast('✅ API key saved!');apiSt('✅ saved','var(--green)');
+    }catch(e){showToast('❌ Save failed',false);}
+    finally{btn.disabled=false;btn.textContent='💾 Save';}
+  }
+
+  fetch('/api/config').then(function(r){return r.json();}).then(function(c){SB_URL=c.url;SB_KEY=c.key;loadApiKey();});
+
+  function loadFile(input,type){
+    if(!input.files[0])return;
+    var r=new FileReader();
+    r.onload=function(e){document.getElementById(type+'Text').value=e.target.result;document.getElementById(type+'Chip').classList.add('on');document.getElementById(type+'ChipName').textContent=input.files[0].name;};
+    r.readAsText(input.files[0]);
+  }
+  function clearF(type){document.getElementById(type+'Chip').classList.remove('on');document.getElementById(type+'Text').value='';}
+  function showErr(m){var b=document.getElementById('errBox');b.innerHTML=m;b.classList.add('on');}
+  function hideErr(){document.getElementById('errBox').classList.remove('on');}
+  function sc(s){return s>=75?'var(--green)':s>=50?'var(--yellow)':'var(--red)';}
+  function showToast(m,ok){var t=document.getElementById('toast');t.textContent=m;t.className='toast show '+(ok===false?'fail':'ok');setTimeout(function(){t.className='toast';},3200);}
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function addCl(type,item,detail){
+    var list=document.getElementById('changelogList');
+    var em=list.querySelector('.cl-empty');if(em)em.remove();
+    var tc=type==='ADDED'?'cl-added':type==='MODIFIED'?'cl-modified':'cl-kept';
+    var el=document.createElement('div');el.className='cl-item';
+    el.innerHTML='<span class="cl-type '+tc+'">'+type+'</span><div><strong>'+esc(item)+'</strong>'+(detail?'<div style="color:var(--muted);font-size:12px;margin-top:3px">'+esc(detail)+'</div>':'')+'</div>';
+    list.appendChild(el);
+  }
+
+  async function analyze(){
+    hideErr();
+    var apiKey=document.getElementById('apiKey').value.trim();
+    var resume=document.getElementById('resumeText').value.trim();
+    var jd=document.getElementById('jdText').value.trim();
+    if(!apiKey)return showErr('Enter your OpenRouter API key.');
+    if(!resume)return showErr('Provide resume text.');
+    if(!jd)return showErr('Provide a job description.');
+    var btn=document.getElementById('goBtn');btn.classList.add('loading');btn.disabled=true;
+    document.getElementById('report').classList.remove('on');
+    try{
+      var res=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:apiKey,resume:resume.slice(0,6000),jd:jd.slice(0,3000)})});
+      if(!res.ok){var e=await res.json().catch(function(){return{};});throw new Error(e.error||'Server error '+res.status);}
+      var r=await res.json();_r=r;renderReport(r);
+    }catch(e){showErr('Error: '+e.message);}
+    finally{btn.classList.remove('loading');btn.disabled=false;}
+  }
+
+  function renderReport(r){
+    var score=Math.min(100,Math.max(0,r.score||0));
+    var color=sc(score);
+    var fill=document.getElementById('ringFill');
+    fill.style.stroke=color;fill.style.strokeDashoffset=314;
+    setTimeout(function(){fill.style.strokeDashoffset=314-(score/100)*314;},50);
+    document.getElementById('scoreNum').textContent=score+'%';document.getElementById('scoreNum').style.color=color;
+    document.getElementById('scoreTitle').textContent=r.scoreTitle||'';
+    document.getElementById('scoreVerdict').textContent=r.scoreVerdict||'';
+    var meta=document.getElementById('scoreMeta');
+    meta.textContent=(r.company&&r.role)?r.company+' · '+r.role:(r.company||r.role||'');
+    meta.style.display=(r.company||r.role)?'block':'none';
+    var bEl=document.getElementById('scoreBars');
+    bEl.innerHTML=(r.subScores||[]).map(function(b){var c=sc(b.value);return '<div class="bar-row"><span class="bar-lbl">'+b.label+'</span><div class="bar-track"><div class="bar-fill" style="width:0%;background:'+c+'" data-w="'+b.value+'"></div></div><span class="bar-val" style="color:'+c+'">'+b.value+'%</span></div>';}).join('');
+    setTimeout(function(){bEl.querySelectorAll('.bar-fill').forEach(function(el){el.style.width=el.dataset.w+'%';});},100);
+    // Extracted panel
+    document.getElementById('extCompany').value=r.company||'';
+    document.getElementById('extRole').value=r.role||'';
+    document.getElementById('extMatched').innerHTML=(r.matchedKeywords||[]).map(function(k){return '<span class="tag tag-g">✓ '+esc(k)+'</span>';}).join('');
+    document.getElementById('extMissing').innerHTML=(r.missingKeywords||[]).map(function(k){return '<span class="tag tag-r">✕ '+esc(k)+'</span>';}).join('');
+    document.getElementById('extPartial').innerHTML=(r.partialKeywords||[]).map(function(k){return '<span class="tag tag-y">~ '+esc(k)+'</span>';}).join('');
+    document.getElementById('extractedPanel').classList.add('on');
+    document.getElementById('strengthsList').innerHTML=(r.strengths||[]).map(function(s){return '<div class="str"><span class="str-dot">▸</span><span>'+esc(s)+'</span></div>';}).join('');
+    document.getElementById('gapsList').innerHTML=(r.gaps||[]).map(function(g){return '<div class="rec"><span>⚠️</span><span>'+esc(g)+'</span></div>';}).join('');
+    document.getElementById('recsList').innerHTML=(r.recommendations||[]).map(function(rec){return '<div class="rec"><span>→</span><span>'+esc(rec)+'</span></div>';}).join('');
+    document.getElementById('recruiterText').textContent=r.recruiterSummary||'';
+    var sb=document.getElementById('saveKwBtn');sb.textContent='💾 Save to Supabase';sb.disabled=false;sb.onclick=saveKeywords;
+    document.getElementById('summaryOutput').textContent='Click Generate to create a keyword-optimised summary...';
+    document.getElementById('summaryOutput').style.cssText='color:var(--muted);font-style:italic';
+    document.getElementById('expOutput').innerHTML='<span style="color:var(--muted);font-size:13px;font-style:italic">Click Generate to inject missing keywords...</span>';
+    document.getElementById('changelogList').innerHTML='<div class="cl-empty">No changes yet.</div>';
+    document.getElementById('optResumeIdle').style.display='block';
+    document.getElementById('optPermBox').style.display='none';
+    document.getElementById('optResumeResult').style.display='none';
+    _optProposal=null;
+    document.getElementById('report').classList.add('on');
+    document.getElementById('report').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  async function saveKeywords(){
+    if(!_r)return;
+    var btn=document.getElementById('saveKwBtn');btn.disabled=true;btn.textContent='⏳ Saving...';
+    try{
+      var company=document.getElementById('extCompany').value.trim()||(_r.company||'');
+      var role=document.getElementById('extRole').value.trim()||(_r.role||'');
+      var jobUrl=document.getElementById('jobUrl').value.trim();
+      var payload={matched:_r.matchedKeywords||[],missing:_r.missingKeywords||[],partial:_r.partialKeywords||[],score:_r.score,score_title:_r.scoreTitle,company:company,role:role,job_url:jobUrl||null,jd_snippet:document.getElementById('jdText').value.slice(0,300),created_at:new Date().toISOString()};
+      var res=await fetch(SB_URL+'/rest/v1/resume_keywords',{method:'POST',headers:{apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
+      if(!res.ok){var e=await res.json().catch(function(){return{};});throw new Error(e.message||'Supabase error '+res.status);}
+      showToast('✅ Saved! View in History');
+      btn.textContent='✅ View History';
+      btn.onclick=function(){window.open('/history','_blank');};
+    }catch(e){showToast('❌ '+e.message,false);btn.textContent='💾 Save to Supabase';btn.disabled=false;}
+  }
+
+  async function generateSummary(){
+    if(!_r)return;
+    var apiKey=document.getElementById('apiKey').value.trim();if(!apiKey)return showErr('Enter API key.');
+    var resume=document.getElementById('resumeText').value.trim();
+    var jd=document.getElementById('jdText').value.trim();
+    var btn=document.getElementById('genSummaryBtn');btn.disabled=true;btn.textContent='⏳...';
+    var out=document.getElementById('summaryOutput');out.textContent='';out.className='gen-text pulsing';out.style.cssText='';
+    var missing=(_r.missingKeywords||[]).join(', ');var matched=(_r.matchedKeywords||[]).join(', ');
+    try{
+      var res=await fetch('/api/proxy-raw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:apiKey,type:'summary',resume:resume.slice(0,3000),jd:jd.slice(0,2000),missing:missing,matched:matched})});
+      if(!res.ok)throw new Error('Server error '+res.status);
+      var d=await res.json();var parsed;
+      try{parsed=JSON.parse((d.text||'').replace(/\x60\x60\x60json|\x60\x60\x60/g,'').trim());}catch(e){throw new Error('Could not parse AI response');}
+      var html='';
+      (parsed.sections||[]).forEach(function(sec){
+        html+='<div class="exp-section"><div class="exp-title">'+esc(sec.role)+'</div><div class="exp-bullets">';
+        (sec.bullets||[]).forEach(function(b){
+          var isC=b.status==='CHANGED',isN=b.status==='NEW';
+          var cls=isC?' changed':isN?' added':'';
+          var icon=isC?'✎':isN?'✦':'▸';
+          var ic=isC?'color:var(--yellow)':isN?'color:var(--green)':'color:var(--muted)';
+          html+='<div class="bullet-row'+cls+'"><span class="b-icon" style="'+ic+'">'+icon+'</span><div><span>'+esc(b.text)+'</span>'+(b.change&&isC?'<div class="b-change-note">+ '+esc(b.change)+'</div>':'')+'</div></div>';
+        });
+        html+='</div></div>';
+      });
+      out.innerHTML=html||'<span style="color:var(--muted)">No bullets generated.</span>';
+      (parsed.changelog||[]).forEach(function(cl){addCl(cl.type,cl.item,cl.detail);});
+    }catch(e){out.innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>';}
+    finally{btn.disabled=false;btn.textContent='⚡ Regenerate';}
+  }
+
+  async function generateExperience(){
+    if(!_r)return;
+    var apiKey=document.getElementById('apiKey').value.trim();if(!apiKey)return showErr('Enter API key.');
+    var resume=document.getElementById('resumeText').value.trim();
+    var jd=document.getElementById('jdText').value.trim();
+    var btn=document.getElementById('genExpBtn');btn.disabled=true;btn.textContent='⏳...';
+    var out=document.getElementById('expOutput');out.innerHTML='<span style="color:var(--muted);font-style:italic;font-size:13px">Generating...</span>';
+    var missing=(_r.missingKeywords||[]).join(', ');
+    try{
+      var res=await fetch('/api/proxy-raw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:apiKey,type:'experience',resume:resume.slice(0,5000),jd:jd.slice(0,2000),missing:missing})});
+      if(!res.ok)throw new Error('Server error '+res.status);
+      var d=await res.json();var parsed;
+      try{var clean=(d.text||'').replace(/\x60\x60\x60json|\x60\x60\x60/g,'').trim();parsed=JSON.parse(clean);}catch(e){throw new Error('Could not parse AI response');}
+      var html='';
+      (parsed.sections||[]).forEach(function(sec){
+        html+='<div class="exp-section"><div class="exp-title">'+esc(sec.role)+'</div><div class="exp-bullets">';
+        (sec.bullets||[]).forEach(function(b){
+          var isC=b.status==='CHANGED';
+          var cls=isC?' changed':'';var icon=isC?'✎':'▸';var ic=isC?'color:var(--yellow)':'color:var(--muted)';
+          html+='<div class="bullet-row'+cls+'"><span class="b-icon" style="'+ic+'">'+icon+'</span><div><span>'+esc(b.text)+'</span>'+(b.change&&isC?'<div class="b-change-note">+ '+esc(b.change)+'</div>':'')+'</div></div>';
+        });
+        html+='</div></div>';
+      });
+      out.innerHTML=html||'<span style="color:var(--muted)">No bullets generated.</span>';
+      (parsed.changelog||[]).forEach(function(cl){addCl(cl.type,cl.item,cl.detail);});
+    }catch(e){out.innerHTML='<span style="color:var(--red);font-size:13px">Error: '+esc(e.message)+'</span>';}
+    finally{btn.disabled=false;btn.textContent='⚡ Regenerate';}
+  }
+
+  async function startOptimizeResume(){
+    if(!_r)return;
+    var apiKey=document.getElementById('apiKey').value.trim();if(!apiKey)return showErr('Enter API key.');
+    var resume=document.getElementById('resumeText').value.trim();
+    var jd=document.getElementById('jdText').value.trim();
+    var btn=document.getElementById('genOptResumeBtn');btn.disabled=true;btn.textContent='⏳ Analyzing...';
+    document.getElementById('optResumeIdle').style.display='none';
+    document.getElementById('optPermBox').style.display='none';
+    document.getElementById('optResumeResult').style.display='none';
+    var missing=(_r.missingKeywords||[]).join(', ');var matched=(_r.matchedKeywords||[]).join(', ');
+    try{
+      var res=await fetch('/api/proxy-optimized-resume',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:apiKey,phase:'propose',resume:resume.slice(0,6000),jd:jd.slice(0,3000),missing:missing,matched:matched})});
+      if(!res.ok)throw new Error('Server error '+res.status);
+      var d=await res.json();_optProposal=d;
+      var list=document.getElementById('permChangesList');
+      list.innerHTML=(d.proposed_changes||[]).map(function(c){
+        var icon=c.type==='keyword_inject'?'🔑':c.type==='phrasing'?'✏️':c.type==='section_reorder'?'↕️':'📝';
+        return '<div class="perm-change"><span>'+icon+'</span><div><strong>'+esc(c.section)+'</strong>: '+esc(c.description)+'</div></div>';
+      }).join('')||'<div class="perm-change"><span>✅</span><div>Minor keyword and phrasing improvements.</div></div>';
+      document.getElementById('optPermBox').style.display='block';
+    }catch(e){showErr('Error: '+e.message);document.getElementById('optResumeIdle').style.display='block';}
+    finally{btn.disabled=false;btn.textContent='⚡ Regenerate';}
+  }
+
+  async function approveOptimize(){
+    if(!_r||!_optProposal)return;
+    var apiKey=document.getElementById('apiKey').value.trim();
+    var resume=document.getElementById('resumeText').value.trim();
+    var jd=document.getElementById('jdText').value.trim();
+    var missing=(_r.missingKeywords||[]).join(', ');var matched=(_r.matchedKeywords||[]).join(', ');
+    document.getElementById('optPermBox').style.display='none';
+    document.getElementById('optResumeResult').style.display='block';
+    var mdEl=document.getElementById('optResumeMd');mdEl.textContent='⏳ Generating...';
+    document.getElementById('optSaveStatus').className='opt-status';
+    try{
+      var res=await fetch('/api/proxy-optimized-resume',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:apiKey,phase:'generate',resume:resume.slice(0,6000),jd:jd.slice(0,3000),missing:missing,matched:matched,proposal:_optProposal})});
+      if(!res.ok)throw new Error('Server error '+res.status);
+      var d=await res.json();_optProposal.markdown=d.markdown;mdEl.textContent=d.markdown;
+      document.getElementById('optResumeResult').scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(e){mdEl.textContent='❌ Error: '+e.message;}
+  }
+
+  function rejectOptimize(){document.getElementById('optPermBox').style.display='none';document.getElementById('optResumeIdle').style.display='block';_optProposal=null;}
+
+  function copyOptResume(){navigator.clipboard.writeText(document.getElementById('optResumeMd').textContent).then(function(){showToast('✅ Copied!');});}
+
+  function downloadOptResume(){
+    var md=document.getElementById('optResumeMd').textContent;
+    var co=(document.getElementById('extCompany').value||'Company').replace(/\s+/g,'_');
+    var ro=(document.getElementById('extRole').value||'Role').replace(/\s+/g,'_');
+    var blob=new Blob([md],{type:'text/markdown'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Resume_'+co+'_'+ro+'.md';a.click();
+  }
+
+  async function saveOptimizedResume(){
+    var md=document.getElementById('optResumeMd').textContent;
+    if(!md||md.startsWith('⏳')||md.startsWith('❌'))return;
+    var status=document.getElementById('optSaveStatus');status.style.display='inline-flex';status.className='opt-status';status.textContent='⏳ Saving...';
+    try{
+      var payload={company:document.getElementById('extCompany').value.trim()||(_r?(_r.company||''):''),role:document.getElementById('extRole').value.trim()||(_r?(_r.role||''):''),score:_r?(_r.score||0):0,markdown_content:md,created_at:new Date().toISOString()};
+      var res=await fetch(SB_URL+'/rest/v1/optimized_resumes',{method:'POST',headers:{apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
+      if(!res.ok){var e=await res.json().catch(function(){return{};});throw new Error(e.message||'Supabase error '+res.status);}
+      status.className='opt-status ok';status.textContent='✅ Saved!';showToast('✅ Optimized resume saved!');
+    }catch(e){status.className='opt-status fail';status.textContent='❌ '+e.message;showToast('❌ '+e.message,false);}
+  }
+</script>
+</body>
+</html>

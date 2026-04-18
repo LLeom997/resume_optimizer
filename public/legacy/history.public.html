@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Job History — Resume×JD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f2f7;--surface:#ffffff;--surface2:#f5f7fb;--border:#dde2ef;
+    --accent:#3b7ef5;--accent2:#6c3ff7;--green:#15a06e;--red:#d94f4f;--yellow:#c78b00;
+    --text:#1a2035;--muted:#7080a0;--shadow:0 2px 12px rgba(0,0,0,.08);
+    --grid-color:rgba(0,0,0,.055);
+    --gs:'Google Sans',sans-serif;--mono:'DM Mono',monospace;
+  }
+  [data-theme="dark"] {
+    --bg:#090d18;--surface:#0f1523;--surface2:#141a2e;--border:#1c2540;
+    --accent:#4f8ef7;--accent2:#7c5cfc;--green:#2dd4a0;--red:#f76f6f;--yellow:#f7c84f;
+    --text:#e2e8f8;--muted:#5a6a8a;--shadow:0 2px 12px rgba(0,0,0,.45);
+    --grid-color:rgba(255,255,255,.038);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--gs);min-height:100vh;font-size:14px;transition:background .2s,color .2s;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid-color) 1px,transparent 1px),linear-gradient(90deg,var(--grid-color) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+  .wrap{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:0 24px 60px;}
+  .theme-btn{font-family:var(--mono);font-size:11px;padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .2s;}
+  .theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .toast{position:fixed;bottom:24px;right:24px;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(6px);transition:all .3s;pointer-events:none;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.ok{background:var(--surface);border:1px solid var(--green);color:var(--green);box-shadow:var(--shadow);}
+  .toast.fail{background:var(--surface);border:1px solid var(--red);color:var(--red);box-shadow:var(--shadow);}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 16px;border-bottom:1px solid var(--border);margin-bottom:32px;}
+  .logo{font-family:var(--gs);font-weight:700;font-size:20px;letter-spacing:-.3px;}.logo em{color:var(--accent);font-style:normal;}
+  .hdr-right{display:flex;align-items:center;gap:10px;}
+  .back-link{font-family:var(--mono);font-size:11px;background:rgba(59,126,245,.1);border:1px solid rgba(59,126,245,.25);color:var(--accent);padding:6px 12px;border-radius:6px;text-decoration:none;transition:all .2s;}
+  .back-link:hover{background:rgba(59,126,245,.2);}
+  .page-title{font-size:26px;font-weight:700;margin-bottom:6px;}
+  .page-sub{color:var(--muted);font-size:14px;margin-bottom:28px;}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);}
+  .stat-val{font-size:28px;font-weight:700;line-height:1;}
+  .stat-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.07em;color:var(--muted);margin-top:5px;text-transform:uppercase;}
+  .jobs-grid{display:flex;flex-direction:column;gap:14px;}
+  .job-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s;box-shadow:var(--shadow);}
+  .job-card:hover{border-color:var(--accent);}
+  .job-card-top{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:16px 20px;cursor:pointer;user-select:none;}
+  .score-badge{width:52px;height:52px;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+  .score-num{font-family:var(--mono);font-weight:700;font-size:17px;line-height:1;}
+  .score-lbl-sm{font-family:var(--mono);font-size:8px;letter-spacing:.06em;opacity:.6;margin-top:1px;}
+  .job-meta h3{font-size:15px;font-weight:600;margin-bottom:2px;}
+  .job-company{font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:4px;}
+  .date-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap;}
+  .rel-chip{background:var(--surface2);padding:1px 7px;border-radius:4px;font-family:var(--mono);font-size:10px;border:1px solid var(--border);}
+  .schip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;}
+  .sc-g{background:rgba(21,160,110,.12);color:var(--green);border:1px solid rgba(21,160,110,.3);}
+  .sc-y{background:rgba(199,139,0,.12);color:var(--yellow);border:1px solid rgba(199,139,0,.3);}
+  .sc-r{background:rgba(217,79,79,.12);color:var(--red);border:1px solid rgba(217,79,79,.3);}
+  [data-theme="dark"] .sc-g{background:rgba(45,212,160,.12);border-color:rgba(45,212,160,.25);}
+  [data-theme="dark"] .sc-y{background:rgba(247,200,79,.12);border-color:rgba(247,200,79,.25);}
+  [data-theme="dark"] .sc-r{background:rgba(247,111,111,.12);border-color:rgba(247,111,111,.25);}
+  .job-actions{display:flex;gap:8px;}
+  .icon-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--gs);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;text-decoration:none;white-space:nowrap;}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .icon-btn.danger{border-color:rgba(217,79,79,.3);color:var(--red);}
+  .icon-btn.danger:hover{background:rgba(217,79,79,.08);}
+  .job-expand{display:none;border-top:1px solid var(--border);padding:16px 20px;}
+  .job-expand.open{display:block;animation:fadeUp .2s ease;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
+  .expand-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .expand-sect{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;}
+  .expand-ttl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;}
+  .tag{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:5px;}
+  .tag-r{background:rgba(217,79,79,.1);border:1px solid rgba(217,79,79,.2);color:var(--red);}
+  .tag-y{background:rgba(199,139,0,.1);border:1px solid rgba(199,139,0,.2);color:var(--yellow);}
+  .tag-g{background:rgba(21,160,110,.1);border:1px solid rgba(21,160,110,.2);color:var(--green);}
+  [data-theme="dark"] .tag-r{background:rgba(247,111,111,.1);border-color:rgba(247,111,111,.22);}
+  [data-theme="dark"] .tag-y{background:rgba(247,200,79,.1);border-color:rgba(247,200,79,.22);}
+  [data-theme="dark"] .tag-g{background:rgba(45,212,160,.1);border-color:rgba(45,212,160,.22);}
+  .remarks-sect{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:14px 16px;}
+  .remark-item{display:flex;gap:10px;align-items:flex-start;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-bottom:6px;}
+  .remark-date{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;margin-top:2px;}
+  .remark-text{font-size:13px;line-height:1.5;flex:1;}
+  .remark-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;flex-shrink:0;}
+  .remark-del:hover{color:var(--red);}
+  .no-rem{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:6px;}
+  .remark-row{display:flex;gap:8px;margin-top:8px;}
+  .remark-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--gs);font-size:13px;padding:7px 11px;outline:none;transition:border-color .2s;}
+  .remark-input:focus{border-color:var(--accent);}
+  .remark-input::placeholder{color:var(--muted);}
+  .remark-add{padding:7px 13px;border-radius:7px;border:1px solid rgba(59,126,245,.3);background:rgba(59,126,245,.08);color:var(--accent);font-family:var(--gs);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .remark-add:hover{background:rgba(59,126,245,.18);}
+  .loading-msg{padding:40px;text-align:center;color:var(--muted);}
+  .empty-state{padding:60px 40px;text-align:center;}
+  .empty-icon{font-size:48px;margin-bottom:14px;}.empty-title{font-size:18px;font-weight:600;margin-bottom:6px;}.empty-sub{color:var(--muted);}
+  @media(max-width:720px){.stats-row{grid-template-columns:1fr 1fr;}.expand-grid{grid-template-columns:1fr;}.job-card-top{grid-template-columns:auto 1fr;}.job-actions{display:none;}}
+</style>
+<script>  (function(){
+    var t=localStorage.getItem('rxjd-theme')||'light';
+    document.documentElement.setAttribute('data-theme',t);
+    function upBtn(){var b=document.getElementById('themeBtn');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️ Light':'🌙 Dark';}
+    window.toggleTheme=function(){var c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('rxjd-theme',n);upBtn();};
+    document.addEventListener('DOMContentLoaded',upBtn);
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Resume<em>&times;</em>JD <span style="color:var(--muted);font-weight:400">/ History</span></div>
+    <div class="hdr-right">
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
+      <a class="back-link" href="/index.html">← Analyzer</a>
+    </div>
+  </header>
+  <div class="page-title">Job Application History</div>
+  <div class="page-sub">All checked JDs — keyword gaps, scores, links &amp; personal remarks</div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Total Checked</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-avg" style="color:var(--accent)">—</div><div class="stat-lbl">Avg Match</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-strong" style="color:var(--green)">—</div><div class="stat-lbl">Strong ≥75%</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-weak" style="color:var(--red)">—</div><div class="stat-lbl">Weak &lt;50%</div></div>
+  </div>
+  <div id="jobsContainer"><div class="loading-msg">⏳ Loading...</div></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var SB='https://mmsvntxzgmclqdptaxwo.supabase.co',SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tc3ZudHh6Z21jbHFkcHRheHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDQ1NTAsImV4cCI6MjA5MTY4MDU1MH0.NLblodiXSKuUijmnd69jl86apKyxBmF0fUWbFQjHiXA';
+var sbH={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
+var allJobs=[],remCache={};
+
+function toast(m,ok){var t=document.getElementById('toast');t.textContent=m;t.className='toast show '+(ok===false?'fail':'ok');setTimeout(function(){t.className='toast';},3000);}
+function sc(s){return s>=75?'var(--green)':s>=50?'var(--yellow)':'var(--red)';}
+function scBg(s){return s>=75?'rgba(21,160,110,.15)':s>=50?'rgba(199,139,0,.15)':'rgba(217,79,79,.15)';}
+function scBd(s){return s>=75?'rgba(21,160,110,.4)':s>=50?'rgba(199,139,0,.4)':'rgba(217,79,79,.4)';}
+function scCls(s){return s>=75?'sc-g':s>=50?'sc-y':'sc-r';}
+function fmtDt(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function fmtSh(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function relDt(iso){if(!iso)return'';var d=Math.floor((Date.now()-new Date(iso))/86400000);if(d===0)return'Today';if(d===1)return'Yesterday';if(d<7)return d+'d ago';if(d<30)return Math.floor(d/7)+'w ago';return Math.floor(d/30)+'mo ago';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function buildRemHtml(jid){
+  var rem=remCache[jid]||[];
+  if(!rem.length)return '<div class="no-rem">No remarks yet.</div>';
+  return rem.map(function(r){return '<div class="remark-item"><div class="remark-date">'+fmtSh(r.created_at)+'</div><div class="remark-text">'+esc(r.text)+'</div><button class="remark-del" data-rid="'+r.id+'" data-jid="'+jid+'">✕</button></div>';}).join('');
+}
+
+function buildCard(j){
+  var s=j.score||0,miss=j.missing||[],mat=j.matched||[],par=j.partial||[];
+  var mH=miss.length?miss.map(function(k){return '<span class="tag tag-r">✕ '+esc(k)+'</span>';}).join(''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None 🎉</span>';
+  var pH=par.length?par.map(function(k){return '<span class="tag tag-y">~ '+esc(k)+'</span>';}).join(''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None</span>';
+  var aH=mat.length?mat.slice(0,10).map(function(k){return '<span class="tag tag-g">✓ '+esc(k)+'</span>';}).join('')+(mat.length>10?'<span style="color:var(--muted);font-size:11px"> +'+(mat.length-10)+' more</span>':''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None</span>';
+  var linkH=j.job_url?'<a class="icon-btn" href="'+esc(j.job_url)+'" target="_blank">↗ Link</a>':'';
+  return '<div class="job-card" id="jc-'+j.id+'">'
+    +'<div class="job-card-top" data-toggle="'+j.id+'">'
+    +'<div class="score-badge" style="background:'+scBg(s)+';border:2px solid '+scBd(s)+'">'
+    +'<div class="score-num" style="color:'+sc(s)+'">'+s+'</div><div class="score-lbl-sm">MATCH</div></div>'
+    +'<div class="job-meta"><h3>'+esc(j.role||'Unknown Role')+'</h3>'
+    +'<div class="job-company">'+esc(j.company||'—')+'</div>'
+    +'<div class="date-row"><span>'+fmtDt(j.created_at)+'</span><span class="rel-chip">'+relDt(j.created_at)+'</span>'
+    +'<span class="schip '+scCls(s)+'">'+esc(j.score_title||'')+'</span></div></div>'
+    +'<div class="job-actions">'+linkH+'<button class="icon-btn danger" data-del-job="'+j.id+'">🗑 Delete</button></div>'
+    +'</div>'
+    +'<div class="job-expand" id="je-'+j.id+'">'
+    +'<div class="expand-grid">'
+    +'<div class="expand-sect"><div class="expand-ttl">❌ Missing ('+miss.length+')</div><div class="tags">'+mH+'</div></div>'
+    +'<div class="expand-sect"><div class="expand-ttl">~ Partial ('+par.length+')</div><div class="tags">'+pH+'</div></div>'
+    +'<div class="expand-sect" style="grid-column:1/-1"><div class="expand-ttl">✅ Matched ('+mat.length+')</div><div class="tags">'+aH+'</div></div>'
+    +'</div>'
+    +'<div class="remarks-sect">'
+    +'<div class="expand-ttl" style="margin-bottom:8px">📝 Personal Remarks</div>'
+    +'<div id="rem-'+j.id+'">'+buildRemHtml(j.id)+'</div>'
+    +'<div class="remark-row">'
+    +'<input class="remark-input" id="ri-'+j.id+'" placeholder="Add a note — e.g. Applied on LinkedIn, follow up next week" />'
+    +'<button class="remark-add" data-add-rem="'+j.id+'">+ Add</button>'
+    +'</div></div></div></div>';
+}
+
+function renderStats(jobs){
+  document.getElementById('s-total').textContent=jobs.length;
+  var avg=jobs.length?Math.round(jobs.reduce(function(a,j){return a+(j.score||0);},0)/jobs.length):0;
+  document.getElementById('s-avg').textContent=avg+'%';
+  document.getElementById('s-strong').textContent=jobs.filter(function(j){return j.score>=75;}).length;
+  document.getElementById('s-weak').textContent=jobs.filter(function(j){return j.score<50;}).length;
+}
+
+function renderJobs(jobs){
+  var c=document.getElementById('jobsContainer');
+  if(!jobs.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No history yet</div><div class="empty-sub">Run an analysis and save to Supabase.</div></div>';return;}
+  c.innerHTML='<div class="jobs-grid">'+jobs.map(buildCard).join('')+'</div>';
+}
+
+document.addEventListener('click',function(e){
+  // toggle expand
+  var tog=e.target.closest('[data-toggle]');
+  if(tog&&!e.target.closest('.job-actions')){var id=tog.dataset.toggle;var el=document.getElementById('je-'+id);if(el)el.classList.toggle('open');return;}
+  // delete job
+  var delJob=e.target.closest('[data-del-job]');
+  if(delJob){e.stopPropagation();deleteJob(delJob.dataset.delJob);return;}
+  // delete remark
+  var delRem=e.target.closest('.remark-del');
+  if(delRem){deleteRemark(delRem.dataset.rid,delRem.dataset.jid);return;}
+  // add remark
+  var addRem=e.target.closest('[data-add-rem]');
+  if(addRem){addRemark(addRem.dataset.addRem);return;}
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&e.target.classList.contains('remark-input')){
+    var jid=e.target.id.replace('ri-','');addRemark(jid);
+  }
+});
+
+async function loadAll(){
+  try{
+    var r1=await fetch(SB+'/rest/v1/resume_keywords?select=*&order=created_at.desc&limit=50',{headers:sbH});
+    if(!r1.ok)throw new Error('Supabase '+r1.status);
+    allJobs=await r1.json();
+    var r2=await fetch(SB+'/rest/v1/job_remarks?select=*&order=created_at.asc',{headers:sbH});
+    if(r2.ok){var rem=await r2.json();remCache={};(rem||[]).forEach(function(r){if(!remCache[r.job_id])remCache[r.job_id]=[];remCache[r.job_id].push(r);});}
+    renderStats(allJobs);renderJobs(allJobs);
+  }catch(e){document.getElementById('jobsContainer').innerHTML='<div class="loading-msg" style="color:var(--red)">Error: '+esc(e.message)+'</div>';}
+}
+
+async function addRemark(jid){
+  var inp=document.getElementById('ri-'+jid);
+  var txt=(inp.value||'').trim();if(!txt)return;
+  inp.value='';inp.disabled=true;
+  try{
+    var rh=Object.assign({},sbH,{'Prefer':'return=representation'});
+    var res=await fetch(SB+'/rest/v1/job_remarks',{method:'POST',headers:rh,body:JSON.stringify({job_id:jid,text:txt})});
+    if(!res.ok){var er=await res.json().catch(function(){return{};});throw new Error(er.message||'error');}
+    var rows=await res.json();var row=rows[0];
+    if(!remCache[jid])remCache[jid]=[];remCache[jid].push(row);
+    var box=document.getElementById('rem-'+jid);
+    var noRem=box.querySelector('.no-rem');if(noRem)noRem.remove();
+    var el=document.createElement('div');el.className='remark-item';
+    el.innerHTML='<div class="remark-date">'+fmtSh(row.created_at)+'</div><div class="remark-text">'+esc(row.text)+'</div><button class="remark-del" data-rid="'+row.id+'" data-jid="'+jid+'">✕</button>';
+    box.appendChild(el);toast('✅ Remark saved');
+  }catch(e){toast('❌ '+e.message,false);}finally{inp.disabled=false;inp.focus();}
+}
+
+async function deleteRemark(rid,jid){
+  if(!confirm('Delete this remark?'))return;
+  try{
+    var res=await fetch(SB+'/rest/v1/job_remarks?id=eq.'+rid,{method:'DELETE',headers:sbH});
+    if(!res.ok)throw new Error('Delete failed');
+    remCache[jid]=(remCache[jid]||[]).filter(function(r){return r.id!==rid;});
+    document.getElementById('rem-'+jid).innerHTML=buildRemHtml(jid);
+    toast('Remark deleted');
+  }catch(e){toast('❌ '+e.message,false);}
+}
+
+async function deleteJob(jid){
+  if(!confirm('Delete this job entry and all remarks?'))return;
+  try{
+    await fetch(SB+'/rest/v1/job_remarks?job_id=eq.'+jid,{method:'DELETE',headers:sbH});
+    var res=await fetch(SB+'/rest/v1/resume_keywords?id=eq.'+jid,{method:'DELETE',headers:sbH});
+    if(!res.ok)throw new Error('Delete failed');
+    allJobs=allJobs.filter(function(j){return j.id!==jid;});delete remCache[jid];
+    renderStats(allJobs);renderJobs(allJobs);toast('✅ Deleted');
+  }catch(e){toast('❌ '+e.message,false);}
+}
+
+loadAll();
+</script>
+</body>
+</html>
