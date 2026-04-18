@@ -793,6 +793,7 @@ function BulkApplyPage(){
 function TrackerPage({cfg}){
   const [items,setItems]=useState([]);
   const [notes,setNotes]=useState({});
+  const [docScores,setDocScores]=useState({});
   const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState('all');
   const [scoreFilter,setScoreFilter]=useState('all');
@@ -877,6 +878,42 @@ function TrackerPage({cfg}){
     }catch(e){toast(e.message,'fail');}
   };
 
+  const rescoreFromDoc=async(r)=>{
+    if(!r?.id)return;
+    if(!r.resume_doc_url){
+      setDocScores(s=>({...s,[r.id]:{error:'Add Google Docs resume link first.'}}));
+      return;
+    }
+    if(!r.jd_snippet){
+      setDocScores(s=>({...s,[r.id]:{error:'NO JD: add JD snippet to this item.'}}));
+      return;
+    }
+    setDocScores(s=>({...s,[r.id]:{loading:true}}));
+    try{
+      const dRes=await fetch('/api/google-doc-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:r.resume_doc_url})});
+      const d=await dRes.json();
+      if(!dRes.ok)throw new Error(d.error||'Failed to fetch Google Doc');
+      if(d.access==='no_access'){
+        setDocScores(s=>({...s,[r.id]:{noAccess:true,checkedAt:new Date().toISOString()}}));
+        return;
+      }
+      const resumeText=(d.text||'').trim();
+      if(!resumeText){
+        setDocScores(s=>({...s,[r.id]:{noAccess:true,checkedAt:new Date().toISOString()}}));
+        return;
+      }
+      const sRes=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({resume:resumeText.slice(0,6000),jd:(r.jd_snippet||'').slice(0,3000),mode:'full'})});
+      const sd=await sRes.json();
+      if(!sRes.ok)throw new Error(sd.error||'Scoring failed');
+      setDocScores(s=>({...s,[r.id]:{
+        score:sd.score||0,scoreTitle:sd.scoreTitle||'Updated',checkedAt:new Date().toISOString()
+      }}));
+    }catch(e){
+      setDocScores(s=>({...s,[r.id]:{error:e.message||'Scoring failed',checkedAt:new Date().toISOString()}}));
+    }
+  };
+
   return(
     <div>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:20,flexWrap:'wrap'}}>
@@ -931,7 +968,11 @@ function TrackerPage({cfg}){
             <div className="card" style={{padding:0,overflow:'hidden',transition:'border-color .15s',cursor:'pointer'}} key={r.id}
               onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'}
               onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}>
-              <div style={{display:'grid',gridTemplateColumns:'52px 1fr auto',gap:14,alignItems:'center',padding:'14px 18px'}} onClick={()=>setOpen(o=>({...o,[r.id]:!o[r.id]}))}>
+              <div style={{display:'grid',gridTemplateColumns:'52px 1fr auto',gap:14,alignItems:'center',padding:'14px 18px'}} onClick={()=>{
+                const opening=!open[r.id];
+                setOpen(o=>({...o,[r.id]:!o[r.id]}));
+                if(opening&&r.resume_doc_url&&!docScores[r.id])rescoreFromDoc(r);
+              }}>
                 <div style={{width:48,height:48,borderRadius:10,background:scBg(r.score),border:`2px solid ${scBd(r.score)}`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                   <span style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:15,color:sc(r.score),lineHeight:1}}>{r.score||0}</span>
                   <span style={{fontFamily:'var(--mono)',fontSize:8,opacity:.6,marginTop:1}}>MATCH</span>
@@ -962,6 +1003,27 @@ function TrackerPage({cfg}){
                     </select>
                     {r.resume_doc_url&&<a className="btn btn-xs btn-outline" href={r.resume_doc_url} target="_blank">📝 Open Resume Doc</a>}
                     {r.job_url&&<a className="btn btn-xs btn-outline" href={r.job_url} target="_blank">↗ Open JD</a>}
+                  </div>
+                  <div className="card-2" style={{marginBottom:12}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:8,flexWrap:'wrap'}}>
+                      <div className="muted" style={{fontSize:11}}>📈 Live Score from Resume Doc</div>
+                      <button className="btn btn-xs btn-outline" onClick={()=>rescoreFromDoc(r)}>Refresh</button>
+                    </div>
+                    {!r.resume_doc_url&&<div className="muted" style={{fontSize:12}}>Add Google Docs resume link to enable live rescoring.</div>}
+                    {r.resume_doc_url&&docScores[r.id]?.loading&&<div className="muted" style={{fontSize:12}}>Checking latest resume doc…</div>}
+                    {r.resume_doc_url&&docScores[r.id]?.noAccess&&<span className="chip chip-rejected">NO ACCESS</span>}
+                    {r.resume_doc_url&&docScores[r.id]?.error&&<div style={{fontSize:12,color:'var(--red)'}}>{docScores[r.id].error}</div>}
+                    {r.resume_doc_url&&docScores[r.id]?.score!==undefined&&(
+                      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                        <div style={{width:40,height:40,borderRadius:8,background:scBg(docScores[r.id].score),border:`1.5px solid ${scBd(docScores[r.id].score)}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          <span style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:13,color:sc(docScores[r.id].score)}}>{docScores[r.id].score}</span>
+                        </div>
+                        <div style={{fontSize:12,color:'var(--text2)'}}>
+                          <div><strong>Latest doc match:</strong> {docScores[r.id].scoreTitle}</div>
+                          <div style={{color:'var(--muted)'}}>Checked: {fmtDate(docScores[r.id].checkedAt)}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="g2" style={{marginBottom:12}}>
                     <div className="card-2"><div className="muted" style={{fontSize:11,marginBottom:6}}>✅ Matched</div><Tags items={r.matched_keywords} cls="tag-g" prefix="✓ "/></div>

@@ -245,7 +245,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-var SB, SK, AUTH_CLIENT, AUTH_TOKEN, allResumes=[], notesCache={}, activeFilter='all';
+var SB, SK, AUTH_CLIENT, AUTH_TOKEN, allResumes=[], notesCache={}, docScoreCache={}, activeFilter='all';
 var activeScoreFilter='all', activeAppliedFilter='any';
 
 function toast(m,ok){var t=document.getElementById('toast');t.textContent=m;t.className='toast show '+(ok===false?'fail':'ok');setTimeout(function(){t.className='toast';},3000);}
@@ -286,6 +286,65 @@ function toIsoFromDateInput(v){
 function toDateInputFromIso(iso){
   if(!iso)return '';
   return new Date(iso).toISOString().slice(0,10);
+}
+function docScoreHtml(r){
+  var d=docScoreCache[r.id];
+  if(!r.resume_doc_url)return '<div style="font-size:12px;color:var(--muted);font-style:italic">Add a Google Docs resume link to enable live rescoring.</div>';
+  if(!r.jd_snippet)return '<div style="font-size:12px;color:var(--yellow)">NO JD: Add JD snippet in this tracker item to compute live score.</div>';
+  if(!d)return '<div style="font-size:12px;color:var(--muted)">Not scored yet. Opening this card will fetch your doc and calculate a fresh score.</div>';
+  if(d.loading)return '<div style="font-size:12px;color:var(--muted)">Checking latest resume doc…</div>';
+  if(d.noAccess)return '<span class="status-chip s-rejected">NO ACCESS</span>';
+  if(d.error)return '<div style="font-size:12px;color:var(--red)">'+esc(d.error)+'</div>';
+  var delta=(d.score||0)-(r.score||0);
+  var deltaLbl=delta===0?'No change':(delta>0?('+'+delta):String(delta));
+  var deltaCol=delta>0?'var(--green)':delta<0?'var(--red)':'var(--muted)';
+  return ''
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<div class="score-ring" style="width:42px;height:42px;border-radius:10px;background:'+scBg(d.score||0)+';border:2px solid '+scBd(d.score||0)+'">'
+    +'<div class="score-ring-num" style="font-size:14px;color:'+sc(d.score||0)+'">'+(d.score||0)+'</div></div>'
+    +'<div style="font-size:12px;color:var(--text)">'
+    +'<div><strong>Latest doc match:</strong> '+(d.score_title||'Updated')+'</div>'
+    +'<div style="color:'+deltaCol+'">Δ vs saved score: '+deltaLbl+'</div>'
+    +'<div style="color:var(--muted)">Checked: '+fmtDt(d.checked_at)+'</div>'
+    +'</div></div>';
+}
+function paintDocScore(rid){
+  var r=allResumes.find(function(x){return x.id===rid;});
+  var box=document.getElementById('docscore-'+rid);
+  if(!r||!box)return;
+  box.innerHTML=docScoreHtml(r);
+}
+async function rescoreFromGoogleDoc(rid){
+  var r=allResumes.find(function(x){return x.id===rid;});
+  if(!r)return;
+  if(!r.resume_doc_url){docScoreCache[rid]={error:'Add resume doc link first.'};paintDocScore(rid);return;}
+  if(!r.jd_snippet){docScoreCache[rid]={error:'NO JD: add JD snippet to calculate score.'};paintDocScore(rid);return;}
+  docScoreCache[rid]={loading:true};paintDocScore(rid);
+  try{
+    var dr=await fetch('/api/google-doc-text',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:r.resume_doc_url})});
+    var dd=await dr.json();
+    if(!dr.ok)throw new Error(dd.error||'Failed to fetch Google Doc');
+    if(dd.access==='no_access'){
+      docScoreCache[rid]={noAccess:true,checked_at:new Date().toISOString()};
+      paintDocScore(rid);
+      return;
+    }
+    var resumeText=(dd.text||'').trim();
+    if(!resumeText){docScoreCache[rid]={noAccess:true,checked_at:new Date().toISOString()};paintDocScore(rid);return;}
+    var sr=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({resume:resumeText.slice(0,6000),jd:(r.jd_snippet||'').slice(0,3000),mode:'full'})});
+    var sd=await sr.json();
+    if(!sr.ok)throw new Error(sd.error||'Scoring failed');
+    docScoreCache[rid]={
+      score:sd.score||0,
+      score_title:sd.scoreTitle||'Updated',
+      checked_at:new Date().toISOString()
+    };
+    paintDocScore(rid);
+  }catch(e){
+    docScoreCache[rid]={error:e.message||'Scoring failed',checked_at:new Date().toISOString()};
+    paintDocScore(rid);
+  }
 }
 
 function resetModalToCreate(){
@@ -367,6 +426,13 @@ function buildCard(r){
   var resumeH=r.resume_content
     ?'<div class="resume-content-block"><div class="expand-ttl">ðŸ“„ Resume Content</div><pre class="resume-pre">'+esc(r.resume_content)+'</pre></div>'
     :'<div style="font-size:12px;color:var(--muted);font-style:italic">No resume pasted yet.</div>';
+  var liveScoreH='<div class="expand-sect" style="margin-bottom:12px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+    +'<div class="expand-ttl" style="margin-bottom:0">ðŸ“ˆ Live Score from Resume Doc</div>'
+    +'<button class="icon-btn" data-rescore="'+r.id+'" style="font-size:11px">Refresh</button>'
+    +'</div>'
+    +'<div id="docscore-'+r.id+'">'+docScoreHtml(r)+'</div>'
+    +'</div>';
 
   return '<div class="res-card" id="rc-'+r.id+'">'
     +'<div class="res-card-top" data-toggle="'+r.id+'">'
@@ -398,6 +464,8 @@ function buildCard(r){
     +'</div>'
     // Suggestions
     +(suggestH||'')
+    // Live score from Google Doc
+    +liveScoreH
     // Resume content
     +'<div style="margin-bottom:12px">'+resumeH+'</div>'
     // Notes
@@ -458,9 +526,18 @@ document.addEventListener('click',function(e){
   if(tog&&!e.target.closest('.res-actions')&&!e.target.closest('.status-select')&&!e.target.closest('.note-add')&&!e.target.closest('a')){
     var id=tog.dataset.toggle;
     var el=document.getElementById('re-'+id);
-    if(el)el.classList.toggle('open');
+    if(el){
+      var opening=!el.classList.contains('open');
+      el.classList.toggle('open');
+      if(opening){
+        var rr=allResumes.find(function(x){return x.id===id;});
+        if(rr&&rr.resume_doc_url&&!docScoreCache[id])rescoreFromGoogleDoc(id);
+      }
+    }
     return;
   }
+  var rs=e.target.closest('[data-rescore]');
+  if(rs){e.stopPropagation();rescoreFromGoogleDoc(rs.dataset.rescore);return;}
   var del=e.target.closest('[data-del]');
   if(del){e.stopPropagation();deleteResume(del.dataset.del);return;}
   var addNote=e.target.closest('[data-add-note]');
@@ -646,5 +723,3 @@ loadAll();
 </script>
 </body>
 </html>
-
-
