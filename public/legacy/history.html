@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Job History — Resume×JD</title>
+<title>Job History â€” ResumeÃ—JD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -99,35 +99,37 @@
 <script>  (function(){
     var t=localStorage.getItem('rxjd-theme')||'light';
     document.documentElement.setAttribute('data-theme',t);
-    function upBtn(){var b=document.getElementById('themeBtn');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️ Light':'🌙 Dark';}
+    function upBtn(){var b=document.getElementById('themeBtn');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'â˜€ï¸ Light':'ðŸŒ™ Dark';}
     window.toggleTheme=function(){var c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('rxjd-theme',n);upBtn();};
     document.addEventListener('DOMContentLoaded',upBtn);
   })();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="logo">Resume<em>&times;</em>JD <span style="color:var(--muted);font-weight:400">/ History</span></div>
     <div class="hdr-right">
-      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
-      <a class="back-link" href="/">← Analyzer</a>
+      <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">ðŸŒ™ Dark</button>
+      <button class="theme-btn" onclick="logout()">Logout</button>
+      <a class="back-link" href="/">â† Analyzer</a>
     </div>
   </header>
   <div class="page-title">Job Application History</div>
-  <div class="page-sub">All checked JDs — keyword gaps, scores, links &amp; personal remarks</div>
+  <div class="page-sub">All checked JDs â€” keyword gaps, scores, links &amp; personal remarks</div>
   <div class="stats-row">
-    <div class="stat-card"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">Total Checked</div></div>
-    <div class="stat-card"><div class="stat-val" id="s-avg" style="color:var(--accent)">—</div><div class="stat-lbl">Avg Match</div></div>
-    <div class="stat-card"><div class="stat-val" id="s-strong" style="color:var(--green)">—</div><div class="stat-lbl">Strong ≥75%</div></div>
-    <div class="stat-card"><div class="stat-val" id="s-weak" style="color:var(--red)">—</div><div class="stat-lbl">Weak &lt;50%</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-total">â€”</div><div class="stat-lbl">Total Checked</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-avg" style="color:var(--accent)">â€”</div><div class="stat-lbl">Avg Match</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-strong" style="color:var(--green)">â€”</div><div class="stat-lbl">Strong â‰¥75%</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-weak" style="color:var(--red)">â€”</div><div class="stat-lbl">Weak &lt;50%</div></div>
   </div>
-  <div id="jobsContainer"><div class="loading-msg">⏳ Loading...</div></div>
+  <div id="jobsContainer"><div class="loading-msg">â³ Loading...</div></div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
-var SB='https://mmsvntxzgmclqdptaxwo.supabase.co',SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tc3ZudHh6Z21jbHFkcHRheHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDQ1NTAsImV4cCI6MjA5MTY4MDU1MH0.NLblodiXSKuUijmnd69jl86apKyxBmF0fUWbFQjHiXA';
-var sbH={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
+var SB="",SK="",AUTH_CLIENT,AUTH_TOKEN;
+var sbH={'Content-Type':'application/json'};
 var allJobs=[],remCache={};
 
 function toast(m,ok){var t=document.getElementById('toast');t.textContent=m;t.className='toast show '+(ok===false?'fail':'ok');setTimeout(function(){t.className='toast';},3000);}
@@ -135,44 +137,44 @@ function sc(s){return s>=75?'var(--green)':s>=50?'var(--yellow)':'var(--red)';}
 function scBg(s){return s>=75?'rgba(21,160,110,.15)':s>=50?'rgba(199,139,0,.15)':'rgba(217,79,79,.15)';}
 function scBd(s){return s>=75?'rgba(21,160,110,.4)':s>=50?'rgba(199,139,0,.4)':'rgba(217,79,79,.4)';}
 function scCls(s){return s>=75?'sc-g':s>=50?'sc-y':'sc-r';}
-function fmtDt(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
-function fmtSh(iso){if(!iso)return'—';return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function fmtDt(iso){if(!iso)return'â€”';return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function fmtSh(iso){if(!iso)return'â€”';return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function relDt(iso){if(!iso)return'';var d=Math.floor((Date.now()-new Date(iso))/86400000);if(d===0)return'Today';if(d===1)return'Yesterday';if(d<7)return d+'d ago';if(d<30)return Math.floor(d/7)+'w ago';return Math.floor(d/30)+'mo ago';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function buildRemHtml(jid){
   var rem=remCache[jid]||[];
   if(!rem.length)return '<div class="no-rem">No remarks yet.</div>';
-  return rem.map(function(r){return '<div class="remark-item"><div class="remark-date">'+fmtSh(r.created_at)+'</div><div class="remark-text">'+esc(r.text)+'</div><button class="remark-del" data-rid="'+r.id+'" data-jid="'+jid+'">✕</button></div>';}).join('');
+  return rem.map(function(r){return '<div class="remark-item"><div class="remark-date">'+fmtSh(r.created_at)+'</div><div class="remark-text">'+esc(r.text)+'</div><button class="remark-del" data-rid="'+r.id+'" data-jid="'+jid+'">âœ•</button></div>';}).join('');
 }
 
 function buildCard(j){
   var s=j.score||0,miss=j.missing||[],mat=j.matched||[],par=j.partial||[];
-  var mH=miss.length?miss.map(function(k){return '<span class="tag tag-r">✕ '+esc(k)+'</span>';}).join(''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None 🎉</span>';
+  var mH=miss.length?miss.map(function(k){return '<span class="tag tag-r">âœ• '+esc(k)+'</span>';}).join(''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None ðŸŽ‰</span>';
   var pH=par.length?par.map(function(k){return '<span class="tag tag-y">~ '+esc(k)+'</span>';}).join(''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None</span>';
-  var aH=mat.length?mat.slice(0,10).map(function(k){return '<span class="tag tag-g">✓ '+esc(k)+'</span>';}).join('')+(mat.length>10?'<span style="color:var(--muted);font-size:11px"> +'+(mat.length-10)+' more</span>':''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None</span>';
-  var linkH=j.job_url?'<a class="icon-btn" href="'+esc(j.job_url)+'" target="_blank">↗ Link</a>':'';
+  var aH=mat.length?mat.slice(0,10).map(function(k){return '<span class="tag tag-g">âœ“ '+esc(k)+'</span>';}).join('')+(mat.length>10?'<span style="color:var(--muted);font-size:11px"> +'+(mat.length-10)+' more</span>':''):'<span style="color:var(--muted);font-size:12px;font-style:italic">None</span>';
+  var linkH=j.job_url?'<a class="icon-btn" href="'+esc(j.job_url)+'" target="_blank">â†— Link</a>':'';
   return '<div class="job-card" id="jc-'+j.id+'">'
     +'<div class="job-card-top" data-toggle="'+j.id+'">'
     +'<div class="score-badge" style="background:'+scBg(s)+';border:2px solid '+scBd(s)+'">'
     +'<div class="score-num" style="color:'+sc(s)+'">'+s+'</div><div class="score-lbl-sm">MATCH</div></div>'
     +'<div class="job-meta"><h3>'+esc(j.role||'Unknown Role')+'</h3>'
-    +'<div class="job-company">'+esc(j.company||'—')+'</div>'
+    +'<div class="job-company">'+esc(j.company||'â€”')+'</div>'
     +'<div class="date-row"><span>'+fmtDt(j.created_at)+'</span><span class="rel-chip">'+relDt(j.created_at)+'</span>'
     +'<span class="schip '+scCls(s)+'">'+esc(j.score_title||'')+'</span></div></div>'
-    +'<div class="job-actions">'+linkH+'<button class="icon-btn danger" data-del-job="'+j.id+'">🗑 Delete</button></div>'
+    +'<div class="job-actions">'+linkH+'<button class="icon-btn danger" data-del-job="'+j.id+'">ðŸ—‘ Delete</button></div>'
     +'</div>'
     +'<div class="job-expand" id="je-'+j.id+'">'
     +'<div class="expand-grid">'
-    +'<div class="expand-sect"><div class="expand-ttl">❌ Missing ('+miss.length+')</div><div class="tags">'+mH+'</div></div>'
+    +'<div class="expand-sect"><div class="expand-ttl">âŒ Missing ('+miss.length+')</div><div class="tags">'+mH+'</div></div>'
     +'<div class="expand-sect"><div class="expand-ttl">~ Partial ('+par.length+')</div><div class="tags">'+pH+'</div></div>'
-    +'<div class="expand-sect" style="grid-column:1/-1"><div class="expand-ttl">✅ Matched ('+mat.length+')</div><div class="tags">'+aH+'</div></div>'
+    +'<div class="expand-sect" style="grid-column:1/-1"><div class="expand-ttl">âœ… Matched ('+mat.length+')</div><div class="tags">'+aH+'</div></div>'
     +'</div>'
     +'<div class="remarks-sect">'
-    +'<div class="expand-ttl" style="margin-bottom:8px">📝 Personal Remarks</div>'
+    +'<div class="expand-ttl" style="margin-bottom:8px">ðŸ“ Personal Remarks</div>'
     +'<div id="rem-'+j.id+'">'+buildRemHtml(j.id)+'</div>'
     +'<div class="remark-row">'
-    +'<input class="remark-input" id="ri-'+j.id+'" placeholder="Add a note — e.g. Applied on LinkedIn, follow up next week" />'
+    +'<input class="remark-input" id="ri-'+j.id+'" placeholder="Add a note â€” e.g. Applied on LinkedIn, follow up next week" />'
     +'<button class="remark-add" data-add-rem="'+j.id+'">+ Add</button>'
     +'</div></div></div></div>';
 }
@@ -187,7 +189,7 @@ function renderStats(jobs){
 
 function renderJobs(jobs){
   var c=document.getElementById('jobsContainer');
-  if(!jobs.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No history yet</div><div class="empty-sub">Run an analysis and save to Supabase.</div></div>';return;}
+  if(!jobs.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">ðŸ“­</div><div class="empty-title">No history yet</div><div class="empty-sub">Run an analysis and save to Supabase.</div></div>';return;}
   c.innerHTML='<div class="jobs-grid">'+jobs.map(buildCard).join('')+'</div>';
 }
 
@@ -213,6 +215,13 @@ document.addEventListener('keydown',function(e){
 
 async function loadAll(){
   try{
+    var cfg=await fetch('/api/config').then(function(r){return r.json();});
+    SB=cfg.url;SK=cfg.key;
+    AUTH_CLIENT=window.supabase.createClient(SB,SK);
+    var s=await AUTH_CLIENT.auth.getSession();
+    AUTH_TOKEN=s&&s.data&&s.data.session&&s.data.session.access_token;
+    if(!AUTH_TOKEN){window.location.href='/login?next='+encodeURIComponent('/history');return;}
+    sbH={'apikey':SK,'Authorization':'Bearer '+(AUTH_TOKEN||SK),'Content-Type':'application/json'};
     var r1=await fetch(SB+'/rest/v1/resume_keywords?select=*&order=created_at.desc&limit=50',{headers:sbH});
     if(!r1.ok)throw new Error('Supabase '+r1.status);
     allJobs=await r1.json();
@@ -235,9 +244,9 @@ async function addRemark(jid){
     var box=document.getElementById('rem-'+jid);
     var noRem=box.querySelector('.no-rem');if(noRem)noRem.remove();
     var el=document.createElement('div');el.className='remark-item';
-    el.innerHTML='<div class="remark-date">'+fmtSh(row.created_at)+'</div><div class="remark-text">'+esc(row.text)+'</div><button class="remark-del" data-rid="'+row.id+'" data-jid="'+jid+'">✕</button>';
-    box.appendChild(el);toast('✅ Remark saved');
-  }catch(e){toast('❌ '+e.message,false);}finally{inp.disabled=false;inp.focus();}
+    el.innerHTML='<div class="remark-date">'+fmtSh(row.created_at)+'</div><div class="remark-text">'+esc(row.text)+'</div><button class="remark-del" data-rid="'+row.id+'" data-jid="'+jid+'">âœ•</button>';
+    box.appendChild(el);toast('âœ… Remark saved');
+  }catch(e){toast('âŒ '+e.message,false);}finally{inp.disabled=false;inp.focus();}
 }
 
 async function deleteRemark(rid,jid){
@@ -248,7 +257,7 @@ async function deleteRemark(rid,jid){
     remCache[jid]=(remCache[jid]||[]).filter(function(r){return r.id!==rid;});
     document.getElementById('rem-'+jid).innerHTML=buildRemHtml(jid);
     toast('Remark deleted');
-  }catch(e){toast('❌ '+e.message,false);}
+  }catch(e){toast('âŒ '+e.message,false);}
 }
 
 async function deleteJob(jid){
@@ -258,11 +267,17 @@ async function deleteJob(jid){
     var res=await fetch(SB+'/rest/v1/resume_keywords?id=eq.'+jid,{method:'DELETE',headers:sbH});
     if(!res.ok)throw new Error('Delete failed');
     allJobs=allJobs.filter(function(j){return j.id!==jid;});delete remCache[jid];
-    renderStats(allJobs);renderJobs(allJobs);toast('✅ Deleted');
-  }catch(e){toast('❌ '+e.message,false);}
+    renderStats(allJobs);renderJobs(allJobs);toast('âœ… Deleted');
+  }catch(e){toast('âŒ '+e.message,false);}
+}
+
+async function logout(){
+  try{ if(AUTH_CLIENT) await AUTH_CLIENT.auth.signOut(); }catch(_){}
+  window.location.href='/login';
 }
 
 loadAll();
 </script>
 </body>
 </html>
+

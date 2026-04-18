@@ -11,7 +11,6 @@ resume_optimizer-main/
 |  |- history.js
 |  |- resumes.js
 |  \- api/
-|     |- _callOR.js
 |     |- apply-mode.js
 |     |- apply-strategy.js
 |     |- config.js
@@ -21,18 +20,17 @@ resume_optimizer-main/
 |     |- proxy-raw.js
 |     |- proxy-optimized-resume.js
 |     \- resume-memory.js
+|- lib/
+|  \- callOR.js
 |- public/
 |  \- legacy/
 |     |- index.html
 |     |- history.html
-|     |- resumes.html
-|     |- index.public.html
-|     \- history.public.html
+|     \- resumes.html
 |- .env
 |- .gitignore
 |- package.json
 |- supabase_schema.sql
-|- supabase_schema_v2.sql
 \- README.md
 ```
 

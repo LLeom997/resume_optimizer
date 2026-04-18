@@ -5,15 +5,16 @@
   "engines": {
     "node": ">=18"
   },
-"scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start"
-},
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
   "devDependencies": {
     "vercel": "^34.0.0"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.3",
     "next": "^16.2.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

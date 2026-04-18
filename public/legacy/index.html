@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ── DESIGN TOKENS ─────────────────────────────────────────── */
 :root{
@@ -469,7 +470,8 @@ function AnalyzerPage({cfg}){
       const payload={name:`${extCompany||'Co'} — ${extRole||'Role'}`,company:extCompany,role:extRole,
         job_url:jobUrl||null,score:analysis.score,score_title:analysis.scoreTitle,
         matched_keywords:analysis.matchedKeywords||[],missing_keywords:analysis.missingKeywords||[],
-        suggestions:sugTxt,jd_snippet:jd.slice(0,400),status:'draft',created_at:new Date().toISOString()};
+        suggestions:sugTxt,jd_snippet:jd.slice(0,400),status:'draft',
+        resume_doc_url:null,last_applied_at:null,created_at:new Date().toISOString()};
       const res=await fetch(cfg.url+'/rest/v1/tracked_resumes',{method:'POST',
         headers:{apikey:cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify(payload)});
@@ -793,6 +795,8 @@ function TrackerPage({cfg}){
   const [notes,setNotes]=useState({});
   const [loading,setLoading]=useState(true);
   const [filter,setFilter]=useState('all');
+  const [scoreFilter,setScoreFilter]=useState('all');
+  const [appliedFilter,setAppliedFilter]=useState('any');
   const [search,setSearch]=useState('');
   const [open,setOpen]=useState({});
   const [showAdd,setShowAdd]=useState(false);
@@ -827,14 +831,28 @@ function TrackerPage({cfg}){
 
   const filtered=items.filter(r=>{
     const q=search.toLowerCase();
-    return(filter==='all'||r.status===filter)&&(!q||(r.name||'').toLowerCase().includes(q)||(r.company||'').toLowerCase().includes(q)||(r.role||'').toLowerCase().includes(q));
+    const statusMatch=(filter==='all'||r.status===filter);
+    const searchMatch=(!q||(r.name||'').toLowerCase().includes(q)||(r.company||'').toLowerCase().includes(q)||(r.role||'').toLowerCase().includes(q));
+    const score=r.score||0;
+    const scoreMatch=(scoreFilter==='all')||
+      (scoreFilter==='75plus'&&score>=75)||
+      (scoreFilter==='50to74'&&score>=50&&score<75)||
+      (scoreFilter==='below50'&&score<50);
+    const appliedAgeDays=r.last_applied_at?Math.floor((Date.now()-new Date(r.last_applied_at))/86400000):null;
+    const appliedMatch=(appliedFilter==='any')||
+      (appliedFilter==='7d'&&appliedAgeDays!==null&&appliedAgeDays<=7)||
+      (appliedFilter==='30d'&&appliedAgeDays!==null&&appliedAgeDays<=30)||
+      (appliedFilter==='90d'&&appliedAgeDays!==null&&appliedAgeDays<=90);
+    return statusMatch&&searchMatch&&scoreMatch&&appliedMatch;
   });
 
   const updateStatus=async(id,status)=>{
     try{
+      const patch={status};
+      if(status==='applied')patch.last_applied_at=new Date().toISOString();
       await fetch(cfg.url+'/rest/v1/tracked_resumes?id=eq.'+id,{method:'PATCH',
-        headers:{apikey:cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify({status})});
-      setItems(rs=>rs.map(r=>r.id===id?{...r,status}:r));toast('Status updated');
+        headers:{apikey:cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},body:JSON.stringify(patch)});
+      setItems(rs=>rs.map(r=>r.id===id?{...r,...patch}:r));toast('Status updated');
     }catch(e){toast(e.message,'fail');}
   };
 
@@ -862,7 +880,7 @@ function TrackerPage({cfg}){
   return(
     <div>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:20,flexWrap:'wrap'}}>
-        <div><h1 style={{fontSize:20,fontWeight:700,marginBottom:4}}>💼 Resume Tracker</h1><p className="muted" style={{fontSize:13}}>Track every version — score, keywords, status, notes.</p></div>
+        <div><h1 style={{fontSize:20,fontWeight:700,marginBottom:4}}>💼 Resume Tracker</h1><p className="muted" style={{fontSize:13}}>Track metadata + navigation here; edit resume content in Google Docs.</p></div>
         <button className="btn btn-primary btn-sm" onClick={()=>{setEditItem(null);setShowAdd(true);}}>+ Add Resume</button>
       </div>
 
@@ -882,6 +900,18 @@ function TrackerPage({cfg}){
             </button>
           ))}
         </div>
+        <select className="input" style={{width:'auto',padding:'5px 8px',fontSize:12}} value={scoreFilter} onChange={e=>setScoreFilter(e.target.value)}>
+          <option value="all">Score: All</option>
+          <option value="75plus">Score: ≥75</option>
+          <option value="50to74">Score: 50-74</option>
+          <option value="below50">Score: &lt;50</option>
+        </select>
+        <select className="input" style={{width:'auto',padding:'5px 8px',fontSize:12}} value={appliedFilter} onChange={e=>setAppliedFilter(e.target.value)}>
+          <option value="any">Applied: Any time</option>
+          <option value="7d">Applied: Last 7 days</option>
+          <option value="30d">Applied: Last 30 days</option>
+          <option value="90d">Applied: Last 90 days</option>
+        </select>
         <button className="btn btn-ghost btn-sm" style={{marginLeft:'auto'}} onClick={load}>↺</button>
       </div>
 
@@ -913,9 +943,11 @@ function TrackerPage({cfg}){
                     <span className="muted" style={{fontSize:11}}>{fmtDate(r.created_at)}</span>
                     <span style={{background:'var(--surface2)',padding:'1px 7px',borderRadius:4,fontFamily:'var(--mono)',fontSize:10,border:'1px solid var(--border)'}}>{relDate(r.created_at)}</span>
                     <StatusChip s={r.status}/>
+                    {r.last_applied_at&&<span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--muted)'}}>Last applied: {fmtDate(r.last_applied_at)}</span>}
                   </div>
                 </div>
                 <div style={{display:'flex',gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                  {r.resume_doc_url&&<a href={r.resume_doc_url} target="_blank" className="btn btn-xs btn-outline">📝</a>}
                   {r.job_url&&<a href={r.job_url} target="_blank" className="btn btn-xs btn-outline">↗</a>}
                   <button className="btn btn-xs btn-outline" onClick={()=>{setEditItem(r);setShowAdd(true);}}>✏️</button>
                   <button className="btn btn-xs btn-danger" onClick={()=>del(r.id)}>🗑</button>
@@ -928,6 +960,8 @@ function TrackerPage({cfg}){
                     <select className="input" style={{width:'auto',padding:'4px 8px',fontSize:12}} value={r.status||'draft'} onChange={e=>updateStatus(r.id,e.target.value)}>
                       {Object.entries(SM).map(([v,l])=><option key={v} value={v}>{l}</option>)}
                     </select>
+                    {r.resume_doc_url&&<a className="btn btn-xs btn-outline" href={r.resume_doc_url} target="_blank">📝 Open Resume Doc</a>}
+                    {r.job_url&&<a className="btn btn-xs btn-outline" href={r.job_url} target="_blank">↗ Open JD</a>}
                   </div>
                   <div className="g2" style={{marginBottom:12}}>
                     <div className="card-2"><div className="muted" style={{fontSize:11,marginBottom:6}}>✅ Matched</div><Tags items={r.matched_keywords} cls="tag-g" prefix="✓ "/></div>
@@ -975,6 +1009,8 @@ function TrackerPage({cfg}){
 function TrackerModal({cfg,item,onClose,onSaved}){
   const [f,setF]=useState({name:item?.name||'',company:item?.company||'',role:item?.role||'',
     job_url:item?.job_url||'',score:item?.score||'',status:item?.status||'draft',
+    resume_doc_url:item?.resume_doc_url||'',
+    last_applied_at:item?.last_applied_at?new Date(item.last_applied_at).toISOString().slice(0,10):'',
     suggestions:item?.suggestions||'',resume_content:item?.resume_content||'',jd_snippet:item?.jd_snippet||''});
   const [saving,setSaving]=useState(false);
   const upd=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -984,12 +1020,22 @@ function TrackerModal({cfg,item,onClose,onSaved}){
     try{
       const score=parseInt(f.score)||0;
       const payload={...f,score,score_title:score>=75?'Strong Match':score>=50?'Moderate Fit':'Weak Match',
-        job_url:f.job_url||null,suggestions:f.suggestions||null,resume_content:f.resume_content||null,jd_snippet:f.jd_snippet||null};
+        job_url:f.job_url||null,resume_doc_url:f.resume_doc_url||null,
+        last_applied_at:f.last_applied_at?new Date(f.last_applied_at+'T00:00:00').toISOString():null,
+        suggestions:f.suggestions||null,resume_content:f.resume_content||null,jd_snippet:f.jd_snippet||null};
+      if(payload.status==='applied'&&!payload.last_applied_at)payload.last_applied_at=new Date().toISOString();
       if(!item)payload.created_at=new Date().toISOString();
       const url=cfg.url+'/rest/v1/tracked_resumes'+(item?'?id=eq.'+item.id:'');
       const res=await fetch(url,{method:item?'PATCH':'POST',
         headers:{apikey:cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)});
-      if(!res.ok)throw new Error('Supabase '+res.status);
+      if(!res.ok){
+        const e=await res.json().catch(()=>({}));
+        const msg=(e.message||e.error||('Supabase '+res.status));
+        if(String(msg).includes('resume_doc_url')||String(msg).includes('last_applied_at')){
+          throw new Error('DB schema missing columns. Run latest supabase_schema.sql and retry.');
+        }
+        throw new Error(msg);
+      }
       toast(item?'✅ Updated!':'✅ Saved!');onSaved();
     }catch(e){toast(e.message,'fail');}
     finally{setSaving(false);}
@@ -1003,8 +1049,10 @@ function TrackerModal({cfg,item,onClose,onSaved}){
           <div className="field"><label>Company</label><input className="input" value={f.company} onChange={e=>upd('company',e.target.value)}/></div>
           <div className="field"><label>Role</label><input className="input" value={f.role} onChange={e=>upd('role',e.target.value)}/></div>
           <div className="field"><label>Job URL</label><input className="input" value={f.job_url} onChange={e=>upd('job_url',e.target.value)}/></div>
+          <div className="field"><label>Google Docs Resume Link</label><input className="input" value={f.resume_doc_url} onChange={e=>upd('resume_doc_url',e.target.value)} placeholder="https://docs.google.com/document/d/..."/></div>
           <div className="field"><label>Score (%)</label><input className="input" type="number" min="0" max="100" value={f.score} onChange={e=>upd('score',e.target.value)}/></div>
           <div className="field"><label>Status</label><select className="input" value={f.status} onChange={e=>upd('status',e.target.value)}>{Object.entries(SM).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div>
+          <div className="field"><label>Last Applied Date</label><input className="input" type="date" value={f.last_applied_at} onChange={e=>upd('last_applied_at',e.target.value)}/></div>
         </div>
         <div className="field" style={{marginBottom:12}}><label>Suggestions</label><textarea className="input" rows={3} value={f.suggestions} onChange={e=>upd('suggestions',e.target.value)}/></div>
         <div className="field" style={{marginBottom:12}}><label>Resume Content</label><textarea className="input" rows={4} value={f.resume_content} onChange={e=>upd('resume_content',e.target.value)} style={{fontFamily:'var(--mono)',fontSize:12}}/></div>
@@ -1335,9 +1383,42 @@ function App(){
   const [page,setPage]=useState('dashboard');
   const [mobileOpen,setMobileOpen]=useState(false);
   const [collapsed,setCollapsed]=useState(false);
+  const [authClient,setAuthClient]=useState(null);
 
   const nav=useCallback(p=>{setPage(p);setMobileOpen(false);},[]);
   const curNav=NAV.find(n=>n.id===page);
+
+  useEffect(()=>{
+    if(!cfg.url||!cfg.key||!window.supabase)return;
+    const client=window.supabase.createClient(cfg.url,cfg.key);
+    setAuthClient(client);
+    client.auth.getSession().then(({data})=>{
+      if(!data?.session){
+        window.location.href='/login?next='+encodeURIComponent('/');
+        return;
+      }
+      const token=data.session.access_token;
+      if(!window.__rxjdFetchPatched){
+        const _ofetch=window.fetch.bind(window);
+        window.fetch=(url,opts)=>{
+          const o=opts||{};
+          const h=o.headers||{};
+          if(typeof url==='string'&&url.includes('/rest/v1/')){
+            h['Authorization']='Bearer '+token;
+            if(!h['apikey'])h['apikey']=cfg.key;
+            o.headers=h;
+          }
+          return _ofetch(url,o);
+        };
+        window.__rxjdFetchPatched=true;
+      }
+    });
+  },[cfg.url,cfg.key]);
+
+  const logout=async()=>{
+    try{ if(authClient) await authClient.auth.signOut(); }catch(_){}
+    window.location.href='/login';
+  };
 
   return(
     <div className="layout">
@@ -1382,6 +1463,7 @@ function App(){
               <div className="or-dot"/>
               <span>{cfg.hasOrKey?'OR Connected':'OR Key Missing'}</span>
             </div>
+            <button className="btn btn-outline btn-sm" onClick={logout}>Logout</button>
           </div>
         </header>
         <div className="content">
